@@ -15,5 +15,30 @@ resource "helm_release" "grafana" {
     value = "LoadBalancer"
   }
 
-  depends_on = [local_file.kubeconfig]
+  set {
+    name  = "datasources.datasources\\.yaml.apiVersion"
+    value = "1"
+  }
+
+  set {
+    name  = "datasources.datasources\\.yaml.datasources[0].name"
+    value = "Prometheus"
+  }
+
+  set {
+    name  = "datasources.datasources\\.yaml.datasources[0].type"
+    value = "prometheus"
+  }
+
+  set {
+    name  = "datasources.datasources\\.yaml.datasources[0].url"
+    value = "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090"
+  }
+
+  set {
+    name  = "datasources.datasources\\.yaml.datasources[0].isDefault"
+    value = "true"
+  }
+
+  depends_on = [helm_release.kube_prometheus_stack]
 }
