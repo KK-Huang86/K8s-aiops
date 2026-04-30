@@ -1,0 +1,48 @@
+version: '3'
+
+env:
+  KUBECONFIG: "{{.ROOT_DIR}}/kubeconfig.yaml"
+
+tasks:
+  default:
+    desc: "互動選單"
+    cmds:
+      - |
+        choice=$(gum choose \
+          "apply      - 建立 LKE cluster" \
+          "destroy    - 刪除 LKE cluster" \
+          "nodes      - 查看 cluster nodes" \
+          "pods       - 查看所有 pods" \
+          "info       - 查看 cluster 資訊" \
+          "grafana-ip - 查看 Grafana 外部 IP")
+        task $(echo $choice | awk '{print $1}')
+
+  apply:
+    desc: "建立 LKE cluster"
+    cmds:
+      - terraform apply
+
+  destroy:
+    desc: "刪除 LKE cluster"
+    cmds:
+      - terraform destroy
+
+  nodes:
+    desc: "查看 cluster nodes"
+    cmds:
+      - kubectl get nodes
+
+  pods:
+    desc: "查看所有 pods"
+    cmds:
+      - kubectl get pods -A
+
+  info:
+    desc: "查看 cluster 資訊"
+    cmds:
+      - kubectl cluster-info
+
+  grafana-ip:
+    desc: "查看 Grafana 外部 IP"
+    cmds:
+      - kubectl get svc grafana -n monitoring
