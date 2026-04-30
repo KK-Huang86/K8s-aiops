@@ -16,6 +16,16 @@ resource "helm_release" "grafana" {
   }
 
   set {
+    name  = "sidecar.dashboards.enabled"
+    value = "true"
+  }
+
+  set {
+    name  = "sidecar.dashboards.label"
+    value = "grafana_dashboard"
+  }
+
+  set {
     name  = "datasources.datasources\\.yaml.apiVersion"
     value = "1"
   }

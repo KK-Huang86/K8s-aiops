@@ -14,8 +14,13 @@ terraform {
       source  = "hashicorp/helm"
       version = "~> 2.13"
     }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.31"
+    }
   }
 }
+
 
 provider "linode" {
   token = var.linode_token
@@ -25,6 +30,10 @@ provider "helm" {
   kubernetes {
     config_path = local_file.kubeconfig.filename
   }
+}
+
+provider "kubernetes" {
+  config_path = local_file.kubeconfig.filename
 }
 
 resource "linode_lke_cluster" "cluster" {
