@@ -46,8 +46,33 @@ resource "helm_release" "grafana" {
   }
 
   set {
+    name  = "datasources.datasources\\.yaml.datasources[0].uid"
+    value = "prometheus"
+  }
+
+  set {
     name  = "datasources.datasources\\.yaml.datasources[0].isDefault"
     value = "true"
+  }
+
+  set {
+    name  = "datasources.datasources\\.yaml.datasources[1].name"
+    value = "Loki"
+  }
+
+  set {
+    name  = "datasources.datasources\\.yaml.datasources[1].type"
+    value = "loki"
+  }
+
+  set {
+    name  = "datasources.datasources\\.yaml.datasources[1].uid"
+    value = "loki"
+  }
+
+  set {
+    name  = "datasources.datasources\\.yaml.datasources[1].url"
+    value = "http://loki.monitoring.svc.cluster.local:3100"
   }
 
   depends_on = [helm_release.kube_prometheus_stack]

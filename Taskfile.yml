@@ -9,12 +9,16 @@ tasks:
     cmds:
       - |
         choice=$(gum choose \
-          "apply      - 建立 LKE cluster" \
-          "destroy    - 刪除 LKE cluster" \
-          "nodes      - 查看 cluster nodes" \
-          "pods       - 查看所有 pods" \
-          "info       - 查看 cluster 資訊" \
-          "grafana-ip - 查看 Grafana 外部 IP")
+          "apply           - 建立 LKE cluster" \
+          "destroy         - 刪除 LKE cluster" \
+          "nodes           - 查看 cluster nodes" \
+          "pods            - 查看所有 pods" \
+          "info            - 查看 cluster 資訊" \
+          "grafana-ip      - 查看 Grafana 外部 IP" \
+          "traffic-start   - 啟動流量模擬器" \
+          "traffic-stop    - 停止流量模擬器" \
+          "traffic-logs    - 查看流量模擬器 log" \
+          "traffic-status  - 查看流量模擬器狀態")
         task $(echo $choice | awk '{print $1}')
 
   apply:
@@ -46,3 +50,25 @@ tasks:
     desc: "查看 Grafana 外部 IP"
     cmds:
       - kubectl get svc grafana -n monitoring
+
+  traffic-start:
+    desc: "啟動流量模擬器"
+    cmds:
+      - terraform apply -target=kubernetes_namespace.traffic_sim -target=kubernetes_deployment.target_nginx -target=kubernetes_service.target_nginx -target=kubernetes_deployment.traffic_generator -auto-approve
+      - echo "流量模擬器已啟動，使用 'task traffic-logs' 查看流量"
+
+  traffic-stop:
+    desc: "停止流量模擬器"
+    cmds:
+      - terraform destroy -target=kubernetes_deployment.traffic_generator -target=kubernetes_service.target_nginx -target=kubernetes_deployment.target_nginx -target=kubernetes_namespace.traffic_sim -auto-approve
+      - echo "流量模擬器已停止"
+
+  traffic-logs:
+    desc: "查看流量模擬器 log"
+    cmds:
+      - kubectl logs -f deploy/traffic-generator -n traffic-sim
+
+  traffic-status:
+    desc: "查看流量模擬器狀態"
+    cmds:
+      - kubectl get pods -n traffic-sim
