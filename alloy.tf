@@ -56,6 +56,68 @@ resource "helm_release" "alloy" {
               url = "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
             }
           }
+
+          // ── Metrics ──────────────────────────────────────────────────
+
+          // 發現標註 prometheus.io/scrape=true 的 pod
+          discovery.kubernetes "metrics_pods" {
+            role = "pod"
+          }
+
+          discovery.relabel "metrics_pods" {
+            targets = discovery.kubernetes.metrics_pods.targets
+
+            // 只抓有明確標註要 scrape 的 pod，避免與 kube-prometheus-stack 重複
+            rule {
+              source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_scrape"]
+              action        = "keep"
+              regex         = "true"
+            }
+
+            // 允許 pod 自訂 metrics path（預設 /metrics）
+            rule {
+              source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_path"]
+              action        = "replace"
+              target_label  = "__metrics_path__"
+              regex         = "(.+)"
+            }
+
+            // 允許 pod 自訂 port
+            rule {
+              source_labels = ["__address__", "__meta_kubernetes_pod_annotation_prometheus_io_port"]
+              action        = "replace"
+              regex         = "([^:]+)(?::\\d+)?;(\\d+)"
+              replacement   = "$1:$2"
+              target_label  = "__address__"
+            }
+
+            rule {
+              source_labels = ["__meta_kubernetes_namespace"]
+              target_label  = "namespace"
+            }
+
+            rule {
+              source_labels = ["__meta_kubernetes_pod_name"]
+              target_label  = "pod"
+            }
+
+            rule {
+              source_labels = ["__meta_kubernetes_pod_container_name"]
+              target_label  = "container"
+            }
+          }
+
+          prometheus.scrape "pods" {
+            targets    = discovery.relabel.metrics_pods.output
+            forward_to = [prometheus.remote_write.prometheus.receiver]
+          }
+
+          // 推送到 Prometheus remote write endpoint
+          prometheus.remote_write "prometheus" {
+            endpoint {
+              url = "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090/api/v1/write"
+            }
+          }
   EOT
   ]
 

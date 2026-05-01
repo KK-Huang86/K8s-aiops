@@ -104,15 +104,10 @@ resource "kubernetes_deployment" "traffic_generator" {
       spec {
         container {
           name  = "generator"
-          image = "alpine:latest"
+          image = "curlimages/curl:latest"
 
-          # Sends requests with randomized delay to simulate realistic traffic patterns:
-          # - Normal GET requests (80%)
-          # - Slow requests with delay (15%)
-          # - 404 requests (5%) to simulate error traffic
           command = ["/bin/sh", "-c"]
           args = [<<-EOT
-            apk add --no-cache curl > /dev/null 2>&1
             TARGET="http://target-nginx.traffic-sim.svc.cluster.local"
             echo "Traffic generator started. Target: $TARGET"
             COUNTER=0

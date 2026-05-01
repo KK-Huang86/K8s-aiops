@@ -11,5 +11,11 @@ resource "helm_release" "kube_prometheus_stack" {
     value = "false"
   }
 
+  # 讓 Prometheus 接受來自 Alloy 的 remote_write 推送
+  set {
+    name  = "prometheus.prometheusSpec.enableRemoteWriteReceiver"
+    value = "true"
+  }
+
   depends_on = [local_file.kubeconfig]
 }
