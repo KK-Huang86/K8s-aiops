@@ -42,7 +42,7 @@ resource "helm_release" "grafana" {
 
   set {
     name  = "datasources.datasources\\.yaml.datasources[0].url"
-    value = "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090"
+    value = "http://thanos-query.monitoring.svc.cluster.local:9090"
   }
 
   set {

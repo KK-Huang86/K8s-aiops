@@ -21,3 +21,52 @@ resource "kubernetes_secret" "thanos_objstore" {
     linode_object_storage_key.thanos,
   ]
 }
+
+resource "helm_release" "thanos" {
+  name             = "thanos"
+  repository       = "https://charts.bitnami.com/bitnami"
+  chart            = "thanos"
+  namespace        = "monitoring"
+  create_namespace = false
+  version          = "15.7.19"
+  timeout          = 600
+  wait             = false
+
+  values = [<<-EOT
+    image:
+      registry: quay.io
+      repository: thanos/thanos
+      tag: v0.37.2
+
+    existingObjstoreSecret: thanos-objstore-secret
+
+    query:
+      enabled: true
+      # 連接 Thanos Sidecar（跑在 Prometheus Pod 裡）
+      stores:
+        - dnssrv+_grpc._tcp.prometheus-operated.monitoring.svc.cluster.local
+
+    storegateway:
+      enabled: true
+
+    compactor:
+      enabled: true
+      # 各解析度的資料保留時間
+      retentionResolutionRaw: 30d
+      retentionResolution5m: 90d
+      retentionResolution1h: 365d
+
+    # 關閉不需要的元件
+    queryFrontend:
+      enabled: false
+    ruler:
+      enabled: false
+    receive:
+      enabled: false
+    bucketweb:
+      enabled: false
+  EOT
+  ]
+
+  depends_on = [kubernetes_secret.thanos_objstore]
+}
