@@ -19,6 +19,7 @@ resource "kubernetes_secret" "thanos_objstore" {
   depends_on = [
     linode_object_storage_bucket.thanos,
     linode_object_storage_key.thanos,
+    kubernetes_namespace.monitoring,
   ]
 }
 

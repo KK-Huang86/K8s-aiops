@@ -5,6 +5,8 @@ resource "helm_release" "loki" {
   namespace        = "monitoring"
   create_namespace = false
   version          = "6.6.2"
+  timeout          = 600
+  wait             = false
 
   values = [<<-EOT
     deploymentMode: SingleBinary

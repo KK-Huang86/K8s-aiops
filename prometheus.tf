@@ -1,10 +1,19 @@
+resource "kubernetes_namespace" "monitoring" {
+  metadata {
+    name = "monitoring"
+  }
+
+  depends_on = [local_file.kubeconfig]
+}
+
 resource "helm_release" "kube_prometheus_stack" {
   name             = "kube-prometheus-stack"
   repository       = "https://prometheus-community.github.io/helm-charts"
   chart            = "kube-prometheus-stack"
-  namespace        = "monitoring"
-  create_namespace = true
+  namespace        = kubernetes_namespace.monitoring.metadata[0].name
+  create_namespace = false
   version          = "70.4.2"
+  timeout          = 600
 
   set {
     name  = "grafana.enabled"
@@ -45,7 +54,7 @@ resource "helm_release" "kube_prometheus_stack" {
   }
 
   depends_on = [
-    local_file.kubeconfig,
+    kubernetes_namespace.monitoring,
     kubernetes_secret.thanos_objstore,
   ]
 }

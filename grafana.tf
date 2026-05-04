@@ -4,6 +4,8 @@ resource "helm_release" "grafana" {
   chart            = "grafana"
   namespace        = "monitoring"
   create_namespace = true
+  timeout          = 600
+  wait             = false
 
   set {
     name  = "adminPassword"

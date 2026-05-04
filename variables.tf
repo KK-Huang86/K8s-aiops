@@ -15,3 +15,9 @@ variable "discord_webhook_url" {
   type        = string
   sensitive   = true
 }
+
+variable "keep_secret_key" {
+  description = "Keep JWT secret key"
+  type        = string
+  sensitive   = true
+}

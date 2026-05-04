@@ -5,6 +5,8 @@ resource "helm_release" "alloy" {
   namespace        = "monitoring"
   create_namespace = false
   version          = "0.9.2"
+  timeout          = 300
+  wait             = false
 
   values = [<<-EOT
     controller:
