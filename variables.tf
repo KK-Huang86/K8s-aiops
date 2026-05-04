@@ -21,3 +21,9 @@ variable "keep_secret_key" {
   type        = string
   sensitive   = true
 }
+
+variable "robusta_signing_key" {
+  description = "Robusta signing key for cluster authentication"
+  type        = string
+  sensitive   = true
+}

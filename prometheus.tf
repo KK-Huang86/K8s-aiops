@@ -53,6 +53,36 @@ resource "helm_release" "kube_prometheus_stack" {
     value = "1GB"
   }
 
+  values = [
+    yamlencode({
+      alertmanager = {
+        config = {
+          global = {
+            resolve_timeout = "5m"
+          }
+          route = {
+            receiver       = "keep"
+            group_by       = ["alertname", "instance"]
+            group_wait     = "30s"
+            group_interval = "5m"
+            repeat_interval = "4h"
+          }
+          receivers = [
+            {
+              name = "keep"
+              webhook_configs = [
+                {
+                  url           = "http://keep-backend.keep.svc.cluster.local:8080/alerts/event/prometheus"
+                  send_resolved = true
+                }
+              ]
+            }
+          ]
+        }
+      }
+    })
+  ]
+
   depends_on = [
     kubernetes_namespace.monitoring,
     kubernetes_secret.thanos_objstore,
