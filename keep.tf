@@ -17,6 +17,17 @@ resource "helm_release" "keep" {
 
   values = [
     yamlencode({
+      ingress = {
+        enabled   = true
+        className = "nginx"
+        annotations = {
+          "nginx.ingress.kubernetes.io/proxy-read-timeout"    = "3600"
+          "nginx.ingress.kubernetes.io/proxy-send-timeout"    = "3600"
+          "nginx.ingress.kubernetes.io/proxy-connect-timeout" = "3600"
+        }
+        hosts = [{ host = local.keep_host }]
+      }
+
       backend = {
         env = [
           { name = "SECRET_KEY", value = var.keep_secret_key },
@@ -56,7 +67,7 @@ resource "helm_release" "keep" {
                     type   = "discord"
                     config = "{{ providers.discord }}"
                     with = {
-                      content = "### 🟡 [WARNING] {{ alert.labels.alertname }}\n> 📍 **Node**  `{{ alert.labels.instance }}`\n> 📊 **Detail**  {{ alert.description }}"
+                      content = "### 🟡 [WARNING] {{ alert.labels.alertname }}\n> 📍 **Instance**  `{{ alert.labels.instance }}`\n> 📊 **Detail**  {{ alert.description }}"
                     }
                   }
                 }
@@ -81,7 +92,7 @@ resource "helm_release" "keep" {
                     type   = "discord"
                     config = "{{ providers.discord }}"
                     with = {
-                      content = "### 🔴 [CRITICAL] {{ alert.labels.alertname }}\n> 📍 **Node**  `{{ alert.labels.instance }}`\n> 📊 **Detail**  {{ alert.description }}"
+                      content = "### 🔴 [CRITICAL] {{ alert.labels.alertname }}\n> 📍 **Instance**  `{{ alert.labels.instance }}`\n> 📊 **Detail**  {{ alert.description }}"
                     }
                   }
                 }
@@ -95,12 +106,12 @@ resource "helm_release" "keep" {
         env = [
           { name = "AUTH_TYPE", value = "NO_AUTH" },
           { name = "NEXTAUTH_SECRET", value = var.keep_secret_key },
-          { name = "NEXTAUTH_URL", value = "http://localhost:3000" },
+          { name = "NEXTAUTH_URL", value = "http://${local.keep_host}" },
           { name = "NEXTAUTH_URL_INTERNAL", value = "http://keep-frontend:3000" },
           { name = "API_URL", value = "http://keep-backend:8080" },
           { name = "PUSHER_APP_KEY", value = "keepappkey" },
-          { name = "PUSHER_HOST", value = "keep-websocket" },
-          { name = "PUSHER_PORT", value = "6001" },
+          { name = "PUSHER_HOST", value = local.keep_host },
+          { name = "PUSHER_PORT", value = "80" },
         ]
       }
 
@@ -117,5 +128,7 @@ resource "helm_release" "keep" {
     })
   ]
 
-  depends_on = [kubernetes_namespace.keep]
+  depends_on = [
+    kubernetes_namespace.keep,
+  ]
 }

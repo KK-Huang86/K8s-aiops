@@ -66,6 +66,12 @@ resource "helm_release" "kube_prometheus_stack" {
             group_wait     = "30s"
             group_interval = "5m"
             repeat_interval = "4h"
+            routes = [
+              {
+                receiver = "null"
+                matchers = ["alertname = \"Watchdog\""]
+              }
+            ]
           }
           receivers = [
             {
@@ -74,8 +80,14 @@ resource "helm_release" "kube_prometheus_stack" {
                 {
                   url           = "http://keep-backend.keep.svc.cluster.local:8080/alerts/event/prometheus"
                   send_resolved = true
+                  http_config = {
+                    bearer_token = var.keep_secret_key
+                  }
                 }
               ]
+            },
+            {
+              name = "null"
             }
           ]
         }
