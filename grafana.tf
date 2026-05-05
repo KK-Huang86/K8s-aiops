@@ -14,7 +14,7 @@ resource "helm_release" "grafana" {
 
   set {
     name  = "service.type"
-    value = "ClusterIP"
+    value = "LoadBalancer"
   }
 
   set {
