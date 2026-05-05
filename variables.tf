@@ -27,3 +27,9 @@ variable "robusta_signing_key" {
   type        = string
   sensitive   = true
 }
+
+variable "gemini_api_key" {
+  description = "Google Gemini API key for kagent"
+  type        = string
+  sensitive   = true
+}

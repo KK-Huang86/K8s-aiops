@@ -6,48 +6,49 @@ resource "kubernetes_namespace" "traffic_sim" {
   depends_on = [local_file.kubeconfig]
 }
 
-# Target service: nginx that receives simulated traffic
-resource "kubernetes_deployment" "target_nginx" {
+resource "kubernetes_deployment" "cpu_stress" {
   metadata {
-    name      = "target-nginx"
+    name      = "cpu-stress"
     namespace = kubernetes_namespace.traffic_sim.metadata[0].name
     labels = {
-      app = "target-nginx"
+      app = "cpu-stress"
     }
   }
 
+  wait_for_rollout = false
+
   spec {
-    replicas = 1
+    replicas = 2
 
     selector {
       match_labels = {
-        app = "target-nginx"
+        app = "cpu-stress"
       }
     }
 
     template {
       metadata {
         labels = {
-          app = "target-nginx"
+          app = "cpu-stress"
         }
       }
 
       spec {
         container {
-          name  = "nginx"
-          image = "nginx:alpine"
+          name  = "stress"
+          image = "polinux/stress"
 
-          port {
-            container_port = 80
-          }
+          # 每個 Pod 跑 2 個 CPU worker，對應節點的 2 vCPU
+          # 跑 10 分鐘後自動停止，足以觸發 alert 又不會無限消耗
+          args = ["--cpu", "2", "--timeout", "600", "--verbose"]
 
           resources {
             requests = {
-              cpu    = "50m"
+              cpu    = "200m"
               memory = "64Mi"
             }
             limits = {
-              cpu    = "200m"
+              cpu    = "2000m"
               memory = "128Mi"
             }
           }
@@ -55,95 +56,4 @@ resource "kubernetes_deployment" "target_nginx" {
       }
     }
   }
-}
-
-resource "kubernetes_service" "target_nginx" {
-  metadata {
-    name      = "target-nginx"
-    namespace = kubernetes_namespace.traffic_sim.metadata[0].name
-  }
-
-  spec {
-    selector = {
-      app = "target-nginx"
-    }
-
-    port {
-      port        = 80
-      target_port = 80
-    }
-  }
-}
-
-# Traffic generator: sends continuous HTTP requests to the target service
-resource "kubernetes_deployment" "traffic_generator" {
-  metadata {
-    name      = "traffic-generator"
-    namespace = kubernetes_namespace.traffic_sim.metadata[0].name
-    labels = {
-      app = "traffic-generator"
-    }
-  }
-
-  spec {
-    replicas = 1
-
-    selector {
-      match_labels = {
-        app = "traffic-generator"
-      }
-    }
-
-    template {
-      metadata {
-        labels = {
-          app = "traffic-generator"
-        }
-      }
-
-      spec {
-        container {
-          name  = "generator"
-          image = "curlimages/curl:latest"
-
-          command = ["/bin/sh", "-c"]
-          args = [<<-EOT
-            TARGET="http://target-nginx.traffic-sim.svc.cluster.local"
-            echo "Traffic generator started. Target: $TARGET"
-            COUNTER=0
-            while true; do
-              COUNTER=$((COUNTER + 1))
-              MOD=$((COUNTER % 20))
-
-              if [ $MOD -lt 16 ]; then
-                curl -s -o /dev/null -w "GET / -> %%{http_code} (%%{time_total}s)\n" "$TARGET/"
-              elif [ $MOD -lt 19 ]; then
-                curl -s -o /dev/null -w "GET /slow -> %%{http_code} (%%{time_total}s)\n" --max-time 5 "$TARGET/slow-endpoint"
-              else
-                curl -s -o /dev/null -w "GET /missing -> %%{http_code} (%%{time_total}s)\n" "$TARGET/this-does-not-exist"
-              fi
-
-              # Random sleep between 0.1s and 1s to vary request rate
-              SLEEP_MS=$(( (RANDOM % 10 + 1) ))
-              sleep "0.$SLEEP_MS"
-            done
-          EOT
-          ]
-
-          resources {
-            requests = {
-              cpu    = "50m"
-              memory = "32Mi"
-            }
-            limits = {
-              cpu    = "200m"
-              memory = "64Mi"
-            }
-          }
-        }
-      }
-    }
-  }
-
-  depends_on = [kubernetes_service.target_nginx]
 }

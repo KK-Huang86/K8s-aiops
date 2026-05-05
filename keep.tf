@@ -5,6 +5,7 @@ resource "helm_release" "keep" {
   namespace        = "keep"
   create_namespace = true
 
+  wait       = false
   depends_on = [helm_release.ingress_nginx]
 
   values = [
@@ -21,6 +22,10 @@ resource "helm_release" "keep" {
       }
 
       backend = {
+        resources = {
+          requests = { memory = "256Mi", cpu = "100m" }
+          limits   = { memory = "640Mi", cpu = "500m" }
+        }
         env = [
           { name = "SECRET_KEY", value = var.keep_secret_key },
           { name = "AUTH_TYPE", value = "NO_AUTH" },
@@ -148,6 +153,10 @@ resource "helm_release" "keep" {
       }
 
       frontend = {
+        resources = {
+          requests = { memory = "64Mi", cpu = "50m" }
+          limits   = { memory = "256Mi", cpu = "200m" }
+        }
         env = [
           { name = "AUTH_TYPE", value = "NO_AUTH" },
           { name = "NEXTAUTH_SECRET", value = var.keep_secret_key },
@@ -161,6 +170,10 @@ resource "helm_release" "keep" {
       }
 
       websocket = {
+        resources = {
+          requests = { memory = "64Mi", cpu = "50m" }
+          limits   = { memory = "128Mi", cpu = "100m" }
+        }
         env = [
           { name = "SOKETI_HOST", value = "0.0.0.0" },
           { name = "SOKETI_DEBUG", value = "0" },
@@ -168,6 +181,15 @@ resource "helm_release" "keep" {
           { name = "SOKETI_DEFAULT_APP_ID", value = "1" },
           { name = "SOKETI_DEFAULT_APP_KEY", value = "keepappkey" },
           { name = "SOKETI_DEFAULT_APP_SECRET", value = "keepappsecret" },
+        ]
+      }
+      database = {
+        resources = {
+          requests = { memory = "256Mi", cpu = "100m" }
+          limits   = { memory = "512Mi", cpu = "300m" }
+        }
+        extraEnvVars = [
+          { name = "MYSQL_INNODB_BUFFER_POOL_SIZE", value = "128M" }
         ]
       }
     })
