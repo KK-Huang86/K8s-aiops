@@ -6,25 +6,17 @@ resource "kubernetes_namespace" "traffic_sim" {
   depends_on = [local_file.kubeconfig]
 }
 
-resource "kubernetes_deployment" "cpu_stress" {
+resource "kubernetes_job" "cpu_stress" {
   metadata {
     name      = "cpu-stress"
     namespace = kubernetes_namespace.traffic_sim.metadata[0].name
-    labels = {
-      app = "cpu-stress"
-    }
   }
 
-  wait_for_rollout = false
+  wait_for_completion = false
 
   spec {
-    replicas = 2
-
-    selector {
-      match_labels = {
-        app = "cpu-stress"
-      }
-    }
+    completions = 1
+    parallelism = 2
 
     template {
       metadata {
@@ -34,13 +26,13 @@ resource "kubernetes_deployment" "cpu_stress" {
       }
 
       spec {
-        container {
-          name  = "stress"
-          image = "polinux/stress"
+        restart_policy = "Never"
 
-          # 每個 Pod 跑 2 個 CPU worker，對應節點的 2 vCPU
-          # 跑 10 分鐘後自動停止，足以觸發 alert 又不會無限消耗
-          args = ["--cpu", "2", "--timeout", "600", "--verbose"]
+        container {
+          name    = "stress"
+          image   = "polinux/stress"
+          command = ["stress"]
+          args    = ["--cpu", "2", "--timeout", "600", "--verbose"]
 
           resources {
             requests = {

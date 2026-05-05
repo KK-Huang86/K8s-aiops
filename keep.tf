@@ -24,7 +24,7 @@ resource "helm_release" "keep" {
       backend = {
         resources = {
           requests = { memory = "256Mi", cpu = "100m" }
-          limits   = { memory = "640Mi", cpu = "500m" }
+          limits   = { memory = "1Gi", cpu = "500m" }
         }
         env = [
           { name = "SECRET_KEY", value = var.keep_secret_key },
@@ -154,8 +154,8 @@ resource "helm_release" "keep" {
 
       frontend = {
         resources = {
-          requests = { memory = "64Mi", cpu = "50m" }
-          limits   = { memory = "256Mi", cpu = "200m" }
+          requests = { memory = "256Mi", cpu = "100m" }
+          limits   = { memory = "512Mi", cpu = "500m" }
         }
         env = [
           { name = "AUTH_TYPE", value = "NO_AUTH" },

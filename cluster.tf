@@ -52,7 +52,7 @@ resource "linode_lke_cluster" "cluster" {
 
   pool {
     type  = "g6-standard-2"
-    count = 2
+    count = 3
   }
 }
 

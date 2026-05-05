@@ -15,10 +15,13 @@ tasks:
           "pods            - 查看所有 pods" \
           "info            - 查看 cluster 資訊" \
           "grafana-ip      - 查看 Grafana 外部 IP" \
-          "traffic-start   - 啟動流量模擬器" \
-          "traffic-stop    - 停止流量模擬器" \
-          "traffic-logs    - 查看流量模擬器 log" \
-          "traffic-status  - 查看流量模擬器狀態")
+          "keep-url        - 查看 Keep UI 網址" \
+          "keep-status     - 查看 Keep pods 狀態" \
+          "keep-logs       - 查看 Keep backend log" \
+          "traffic-start   - 啟動 CPU 壓力測試" \
+          "traffic-stop    - 停止 CPU 壓力測試" \
+          "traffic-logs    - 查看壓力測試 log" \
+          "traffic-status  - 查看壓力測試狀態")
         task $(echo $choice | awk '{print $1}')
 
   apply:
@@ -51,24 +54,43 @@ tasks:
     cmds:
       - kubectl get svc grafana -n monitoring
 
-  traffic-start:
-    desc: "啟動流量模擬器"
+  keep-url:
+    desc: "查看 Keep UI 網址"
     cmds:
-      - terraform apply -target=kubernetes_namespace.traffic_sim -target=kubernetes_deployment.target_nginx -target=kubernetes_service.target_nginx -target=kubernetes_deployment.traffic_generator -auto-approve
-      - echo "流量模擬器已啟動，使用 'task traffic-logs' 查看流量"
+      - |
+        IP=$(kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        echo "Keep UI: http://${IP}.nip.io"
+
+  keep-status:
+    desc: "查看 Keep pods 狀態"
+    cmds:
+      - kubectl get pods -n keep
+
+  keep-logs:
+    desc: "查看 Keep backend log"
+    cmds:
+      - kubectl logs -f -l app.kubernetes.io/name=keep-backend -n keep --tail=50
+
+  traffic-start:
+    desc: "啟動 CPU 壓力測試"
+    cmds:
+      - kubectl delete job cpu-stress -n traffic-sim --ignore-not-found
+      - terraform apply -target=kubernetes_namespace.traffic_sim -target=kubernetes_job.cpu_stress -auto-approve
+      - echo "CPU 壓力測試已啟動，使用 'task traffic-logs' 查看 log"
 
   traffic-stop:
-    desc: "停止流量模擬器"
+    desc: "停止 CPU 壓力測試"
     cmds:
-      - terraform destroy -target=kubernetes_deployment.traffic_generator -target=kubernetes_service.target_nginx -target=kubernetes_deployment.target_nginx -target=kubernetes_namespace.traffic_sim -auto-approve
-      - echo "流量模擬器已停止"
+      - kubectl delete job cpu-stress -n traffic-sim --ignore-not-found
+      - echo "CPU 壓力測試已停止"
 
   traffic-logs:
-    desc: "查看流量模擬器 log"
+    desc: "查看 CPU 壓力測試 log"
     cmds:
-      - kubectl logs -f deploy/traffic-generator -n traffic-sim
+      - kubectl logs -f -l app=cpu-stress -n traffic-sim
 
   traffic-status:
-    desc: "查看流量模擬器狀態"
+    desc: "查看 CPU 壓力測試狀態"
     cmds:
       - kubectl get pods -n traffic-sim
+      - kubectl top nodes
