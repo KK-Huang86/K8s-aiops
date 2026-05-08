@@ -154,6 +154,15 @@ task traffic-status # 查看 pod 狀態與節點資源使用量
 | `discord_webhook_url` | Discord incoming webhook URL |
 | `robusta_signing_key` | Robusta 平台 signing key |
 
+## 成果展示
+
+當 CPU 壓力測試將節點使用率推超過告警閾值時，整條 pipeline 會自動執行：
+
+1. Keep 接收來自 Alertmanager 的告警，並將 warning/critical 通知發送到 Discord
+2. 針對 critical 告警，kagent 的 `alert-investigator` agent 調查叢集狀態，並輸出結構化的根因分析
+
+![Discord 告警與 kagent 分析](static/imgs/demo-discord-alert.png)
+
 ## 注意事項
 
 - `terraform.tfvars` 與所有 `terraform.tfstate*` 檔案已加入 `.gitignore`，請勿提交，state 檔案包含明文密鑰。

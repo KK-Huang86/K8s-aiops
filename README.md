@@ -156,6 +156,15 @@ task traffic-status # show pod status and node resource usage
 | `discord_webhook_url` | Discord incoming webhook URL |
 | `robusta_signing_key` | Robusta platform signing key |
 
+## Demo
+
+When a CPU stress job pushes node utilization past the alert thresholds, the full pipeline runs automatically:
+
+1. Keep receives the alert from Alertmanager and posts warning/critical notifications to Discord
+2. For critical alerts, kagent's `alert-investigator` agent investigates the cluster and posts a structured root-cause analysis
+
+![Discord alert and kagent analysis](static/imgs/demo-discord-alert.png)
+
 ## Notes
 
 - `terraform.tfvars` and all `terraform.tfstate*` files are gitignored. Never commit them — state files contain plaintext secrets.
