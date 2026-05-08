@@ -7,7 +7,7 @@ resource "kubectl_manifest" "flash_model_config" {
       namespace: kagent
     spec:
       provider: Gemini
-      model: gemini-2.5-flash
+      model: gemini-2.5-flash-lite
       apiKeySecret: kagent-gemini
       apiKeySecretKey: GOOGLE_API_KEY
   YAML
