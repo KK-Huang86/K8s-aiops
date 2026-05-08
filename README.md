@@ -10,31 +10,59 @@ When an alert fires, the pipeline automatically investigates the cluster using a
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│  LKE Cluster (3x g6-standard-2, ap-northeast)                           │
-│                                                                         │
-│  ┌──────────── Monitoring ─────────────┐  ┌────── Long-term Storage ──┐ │
-│  │  Alloy (daemonset)                  │  │  Thanos Query             │ │
-│  │    → Prometheus   → Alertmanager    │  │  Thanos Store Gateway     │ │
-│  │    → Loki                           │  │  Thanos Compactor         │ │
-│  │  Grafana (dashboards + alert rules) │  │    ↕ Linode Object Storage│ │
-│  └─────────────────────────────────────┘  └───────────────────────────┘ │
-│                                                                         │
-│  ┌──────────── Alert Routing ──────────┐  ┌────── AI Investigation ───┐ │
-│  │  Alertmanager → Keep                │  │  kagent controller        │ │
-│  │  Keep workflows:                    │  │  alert-investigator Agent │ │
-│  │    warning  → Discord               │  │    ↔ kagent-tool-server   │ │
-│  │    critical → Discord               │  │       (K8s MCP tools)     │ │
-│  │           + → kagent trigger        │  │    ↔ discord-mcp          │ │
-│  │  Robusta → Discord (K8s events)     │  │       (send_discord_msg)  │ │
-│  └─────────────────────────────────────┘  └───────────────────────────┘ │
-│                                                                         │
-│  NGINX Ingress (LoadBalancer) → Keep UI / Keep API                      │
-└─────────────────────────────────────────────────────────────────────────┘
-                                     │
-                              Discord Channel
-                    (warning alerts / critical alerts / AI analysis)
+```mermaid
+graph TB
+    subgraph K8s["K8s Cluster (Linode LKE)"]
+
+        subgraph Monitoring["Monitoring Layer"]
+            Alloy["Alloy\n(daemonset)"]
+            Prometheus["Prometheus\n+ Alertmanager"]
+            Loki["Loki"]
+            Grafana["Grafana\n(dashboards + alerts)"]
+            Thanos["Thanos"]
+
+            Alloy -->|pod metrics| Prometheus
+            Alloy -->|logs| Loki
+            Prometheus <-->|remote read/write| Thanos
+            Loki --> Grafana
+            Prometheus --> Grafana
+            Thanos -->|long-term queries| Grafana
+        end
+
+        subgraph Storage["Long-term Storage"]
+            ObjStore["Linode Object Storage\n(S3-compatible)"]
+            Thanos <-->|object store| ObjStore
+        end
+
+        subgraph AlertMgmt["Alert Management"]
+            Keep["Keep\n(workflows & routing)"]
+            Robusta["Robusta\n(K8s event watcher)"]
+        end
+
+        subgraph AI["AI Investigation"]
+            DiscordMCP["discord-mcp\n(MCP Server)"]
+            Agent["alert-investigator\n(kagent Agent)"]
+            K8sAPI[("Kubernetes API")]
+
+            DiscordMCP -->|A2A call| Agent
+            Agent -->|k8s queries| K8sAPI
+            Agent -->|send report| DiscordMCP
+        end
+
+        NGINX["NGINX Ingress\n(LoadBalancer)"]
+
+        Prometheus -->|alert webhook| Keep
+        Keep -->|POST /trigger| DiscordMCP
+        NGINX --> Keep
+    end
+
+    Discord["Discord"]
+    Gemini["Google Gemini"]
+
+    Keep -->|webhook| Discord
+    Robusta -->|webhook| Discord
+    DiscordMCP -->|webhook| Discord
+    Agent -->|LLM| Gemini
 ```
 
 ## Alert Flow

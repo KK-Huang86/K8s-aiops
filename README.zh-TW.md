@@ -1,6 +1,6 @@
 # kagent-aiops-infra-iac
 
-以 Terraform 在 Linode LKE 上一鍵佈建的 Kubernetes 可觀測性與自動化事件應變平台。
+以 Terraform 在 Linode LKE 上一鍵部署的 Kubernetes 可觀測性與自動化事件應變平台。
 
 當告警觸發時，系統會自動透過 kagent AI agent（Gemini）調查叢集狀態，並將分析結果發送到 Discord，無需人工介入即可完成第一線分診。
 
@@ -8,31 +8,59 @@
 
 ## 架構
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│  LKE Cluster（3x g6-standard-2，ap-northeast）                          │
-│                                                                         │
-│  ┌──────────── 監控層 ──────────────────┐  ┌──── 長期指標儲存 ──────────┐ │
-│  │  Alloy（daemonset）                  │  │  Thanos Query             │ │
-│  │    → Prometheus   → Alertmanager    │  │  Thanos Store Gateway     │ │
-│  │    → Loki                           │  │  Thanos Compactor         │ │
-│  │  Grafana（儀表板 + 告警規則）         │  │    ↕ Linode Object Storage│ │
-│  └──────────────────────────────────────┘  └───────────────────────────┘ │
-│                                                                         │
-│  ┌──────────── 告警路由 ────────────────┐  ┌──── AI 自動調查 ───────────┐ │
-│  │  Alertmanager → Keep                │  │  kagent controller        │ │
-│  │  Keep workflows：                   │  │  alert-investigator Agent │ │
-│  │    warning  → Discord               │  │    ↔ kagent-tool-server   │ │
-│  │    critical → Discord               │  │       （K8s MCP 工具）     │ │
-│  │           + → kagent trigger        │  │    ↔ discord-mcp          │ │
-│  │  Robusta → Discord（K8s 事件）       │  │       （send_discord_msg） │ │
-│  └──────────────────────────────────────┘  └───────────────────────────┘ │
-│                                                                         │
-│  NGINX Ingress（LoadBalancer）→ Keep UI / Keep API                      │
-└─────────────────────────────────────────────────────────────────────────┘
-                                     │
-                              Discord 頻道
-                  （warning 告警 / critical 告警 / AI 分析報告）
+```mermaid
+graph TB
+    subgraph K8s["K8s Cluster (Linode LKE)"]
+
+        subgraph Monitoring["Monitoring Layer"]
+            Alloy["Alloy\n(daemonset)"]
+            Prometheus["Prometheus\n+ Alertmanager"]
+            Loki["Loki"]
+            Grafana["Grafana\n(dashboards + alerts)"]
+            Thanos["Thanos"]
+
+            Alloy -->|pod metrics| Prometheus
+            Alloy -->|logs| Loki
+            Prometheus <-->|remote read/write| Thanos
+            Loki --> Grafana
+            Prometheus --> Grafana
+            Thanos -->|long-term queries| Grafana
+        end
+
+        subgraph Storage["Long-term Storage"]
+            ObjStore["Linode Object Storage\n(S3-compatible)"]
+            Thanos <-->|object store| ObjStore
+        end
+
+        subgraph AlertMgmt["Alert Management"]
+            Keep["Keep\n(workflows & routing)"]
+            Robusta["Robusta\n(K8s event watcher)"]
+        end
+
+        subgraph AI["AI Investigation"]
+            DiscordMCP["discord-mcp\n(MCP Server)"]
+            Agent["alert-investigator\n(kagent Agent)"]
+            K8sAPI[("Kubernetes API")]
+
+            DiscordMCP -->|A2A call| Agent
+            Agent -->|k8s queries| K8sAPI
+            Agent -->|send report| DiscordMCP
+        end
+
+        NGINX["NGINX Ingress\n(LoadBalancer)"]
+
+        Prometheus -->|alert webhook| Keep
+        Keep -->|POST /trigger| DiscordMCP
+        NGINX --> Keep
+    end
+
+    Discord["Discord"]
+    Gemini["Google Gemini"]
+
+    Keep -->|webhook| Discord
+    Robusta -->|webhook| Discord
+    DiscordMCP -->|webhook| Discord
+    Agent -->|LLM| Gemini
 ```
 
 ## 告警流程
